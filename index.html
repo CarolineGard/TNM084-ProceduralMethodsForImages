@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<title>Procedural Landscape</title>
+		<title>My first three.js app</title>
+		<!--<link rel="stylesheet" href="styles/styles.css">-->
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="js/three.js"></script>
+		
+
+		<script>
+			var camera, scene, renderer, stats;
+
+			init();
+			animate();
+
+			function init() {
+				scene = new THREE.Scene();
+				
+				group = new THREE.Group();
+				scene.add(group);
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.z = 1040;
+
+                //-------- WORLD ------------
+                
+                //Sun
+                var sunGeometry = new THREE.SphereGeometry(50, 50, 50);
+                var sunMaterial = new THREE.MeshBasicMaterial( {color: 0xFABE58, side: THREE.DoubleSide} );
+
+                sunMesh = new THREE.Mesh( sunGeometry, sunMaterial );
+                sunMesh.position.y = 250;
+                sunMesh.position.x = 300;
+                group.add ( sunMesh );
+
+
+
+                // Ground Close
+				var groundGeometry = new THREE.PlaneGeometry( 450, 100, 5, 5 );
+				var groundMaterial = new THREE.MeshBasicMaterial( {color: 0x34495E, side: THREE.DoubleSide} );
+				var groundMesh = new THREE.Mesh( groundGeometry, groundMaterial );
+
+				groundMesh.rotation.x = 93;
+				groundMesh.position.z = 800;
+				groundMesh.position.y = -100;
+
+				group.add( groundMesh );
+
+				// Mountains 
+				var mountainGeometry = new THREE.PlaneGeometry( 1300, 800, 5, 5 );
+				var mountainMaterial = new THREE.MeshBasicMaterial( {color: 0x22313F, side: THREE.DoubleSide} );
+				var mountainMesh = new THREE.Mesh( mountainGeometry, mountainMaterial );
+				
+				mountainMesh.rotation.x = 93;
+				//mountainMesh.position.z = 800;
+				mountainMesh.position.y = -200;
+
+				group.add( mountainMesh );					
+				
+				
+				// -------- RENDER SETTINGS -------- 
+				renderer = new THREE.WebGLRenderer();
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize ( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+				renderer.render(scene, camera);
+			}
+
+			
+
+			function animate() {
+				requestAnimationFrame( animate );
+                //render();
+				//requestAnimationFrame( animate );
+				render();
+			}
+
+			function render() {
+				camera.lookAt( scene.position ); 
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
+
+                <!--
+                earthMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xfffabf,
+                    //map: THREE.ImageUtils.loadTexture('images/varmpink.png'),
+                    shading: THREE.SmoothShading,
+                    specular: 0
+                });-->
