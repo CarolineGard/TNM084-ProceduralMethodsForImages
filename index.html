@@ -12,11 +12,61 @@
 		</style>
 	</head>
 	<body>
+		<!--<div id="loader"><p>loading...</p></div>-->
+
+
+		<!-- Shader Variables Vertex 
+		attribute float displacement;
+		varying vec3 vNormal;-->
+
+		<!-- Vertex Shader -->
+		<script type="x-shader/x-vertex" id="mountainVertex">
+
+			// switch on high precision floats
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			void main()
+			{
+				//vec3 light = vec3(0.5, 0.2);
+
+				// multiply each vertex by the model-view matric and the projection matrix (both provided by three.js) to get a final vertex position
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+			}
+
+		</script>
+
+		<!-- Fragment Shader -->
+		<script type="x-shader/x-fragment" id="mountainFragment">
+
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+
+			void main()
+			{
+				gl_FragColor = vec4(1.0,0.0,1.0,1.0);
+			}
+
+		</script>
+
+		<script src="node_modules/jquery/dist/jquery.min.js"></script>
 		<script src="js/three.js"></script>
 		
-
+		<!-- MAIN -->
 		<script>
 			var camera, scene, renderer, stats;
+
+			//Camera attributes
+			const VIEW_ANGLE = 45;
+			const ASPECT = window.innerWidth / window.innerHeight;
+			const NEAR = 0.1;
+			const FAR = 10000;
+
+			//Get DOM element to attach to
+			const container = document.querySelector('#container');
+
 
 			init();
 			animate();
@@ -27,7 +77,7 @@
 				group = new THREE.Group();
 				scene.add(group);
 
-				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
 				camera.position.z = 1040;
 
                 //-------- WORLD ------------
@@ -56,7 +106,14 @@
 
 				// Mountains 
 				var mountainGeometry = new THREE.PlaneGeometry( 1300, 800, 5, 5 );
-				var mountainMaterial = new THREE.MeshBasicMaterial( {color: 0x22313F, side: THREE.DoubleSide} );
+				
+				//var mountainMaterial = new THREE.MeshBasicMaterial( {color: 0x22313F, side: THREE.DoubleSide} );
+
+				var mountainMaterial = new THREE.ShaderMaterial({
+					vertexShader: document.getElementById('mountainVertex').textContent,
+					fragmentShader: document.getElementById('mountainFragment').textContent
+				});
+
 				var mountainMesh = new THREE.Mesh( mountainGeometry, mountainMaterial );
 				
 				mountainMesh.rotation.x = 93;
