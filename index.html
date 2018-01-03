@@ -15,54 +15,213 @@
 		<!--<div id="loader"><p>loading...</p></div>-->
 
 		<!-- Vertex Shader -->
+
 		<script type="x-shader/x-vertex" id="mountainVertex">
 			// switch on high precision floats
 			#ifdef GL_ES
 			precision highp float;
 			#endif	
 
+			// **************** SIMPLEX NOISE *********************
+			//
+			// Description : Array and textureless GLSL 2D/3D/4D simplex noise functions.
+			//      Author : Ian McEwan, Ashima Arts.
+			//  Maintainer : stegu
+			//     Lastmod : 20110822 (ijm)
+			//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+			//               Distributed under the MIT License. See LICENSE file.
+			//               https://github.com/ashima/webgl-noise
+			//               https://github.com/stegu/webgl-noise
+			// 
+			vec3 mod289(vec3 x) {
+			  return x - floor(x * (1.0 / 289.0)) * 289.0;
+			}
+
+			vec4 mod289(vec4 x) {
+			  return x - floor(x * (1.0 / 289.0)) * 289.0;
+			}
+
+			vec4 permute(vec4 x) {
+			     return mod289(((x*34.0)+1.0)*x);
+			}
+
+			vec4 taylorInvSqrt(vec4 r)
+			{
+			  return 1.79284291400159 - 0.85373472095314 * r;
+			}
+
+			/////////////////////////////
+			float snoise(vec3 v)
+			{ 
+			  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+			  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+			  // First corner
+			  vec3 i  = floor(v + dot(v, C.yyy) );
+			  vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+			  // Other corners
+			  vec3 g = step(x0.yzx, x0.xyz);
+			  vec3 l = 1.0 - g;
+			  vec3 i1 = min( g.xyz, l.zxy );
+			  vec3 i2 = max( g.xyz, l.zxy );
+
+			  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+			  //   x1 = x0 - i1  + 1.0 * C.xxx;
+			  //   x2 = x0 - i2  + 2.0 * C.xxx;
+			  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+			  vec3 x1 = x0 - i1 + C.xxx;
+			  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+			  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+			  // Permutations
+			  i = mod289(i); 
+			  vec4 p = permute( permute( permute( 
+			             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+			           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+			           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+		      // Gradients: 7x7 points over a square, mapped onto an octahedron.
+			  // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+			  float n_ = 0.142857142857; // 1.0/7.0
+			  vec3  ns = n_ * D.wyz - D.xzx;
+
+			  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+			  vec4 x_ = floor(j * ns.z);
+			  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+			  vec4 x = x_ *ns.x + ns.yyyy;
+			  vec4 y = y_ *ns.x + ns.yyyy;
+			  vec4 h = 1.0 - abs(x) - abs(y);
+
+			  vec4 b0 = vec4( x.xy, y.xy );
+			  vec4 b1 = vec4( x.zw, y.zw );
+
+			  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+			  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+			  vec4 s0 = floor(b0)*2.0 + 1.0;
+			  vec4 s1 = floor(b1)*2.0 + 1.0;
+			  vec4 sh = -step(h, vec4(0.0));
+
+			  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+			  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+			  vec3 p0 = vec3(a0.xy,h.x);
+			  vec3 p1 = vec3(a0.zw,h.y);
+			  vec3 p2 = vec3(a1.xy,h.z);
+			  vec3 p3 = vec3(a1.zw,h.w);
+
+			  //Normalise gradients
+			  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+			  p0 *= norm.x;
+			  p1 *= norm.y;
+			  p2 *= norm.z;
+			  p3 *= norm.w;
+
+			  // Mix final noise value
+			  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+			  m = m * m;
+			  
+			  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+			}
+
+
+			
 			attribute float vertexDisplacement;
-			uniform float delta;
-			varying float vOpacity;
+			//uniform float delta;
+
+			/*
+			uniform float u_height;
+			uniform float u_a;
+			uniform float u_b;
+			uniform float u_nx;
+			uniform float u_ny;*/
+
+			uniform float uAltitude;
+			uniform float uOffset;
+			uniform float uSurfaceIntensity;
+
+			//varying vec4 vCurvePos;
+			//varying vec3 vGrad;
+
 			varying vec3 vUv;
 
+			varying float vEle;
+
+			varying vec3 vWorldPosition;
+			varying vec3 vNormal;
+			
 			void main()
 			{	
-				vUv = position;
-				vOpacity = vertexDisplacement;
+				
+				vEle = 0.0;
 
-				vec3 p = position;
+				for ( float i = 1.0; i < 15.0; i+=1.0 ) {
+					vEle += (1.0/i) * 1.2*snoise(uSurfaceIntensity * i * position + uOffset); 
+				}
 
-				p.x += sin(vertexDisplacement) * 50.0;
-				p.y += cos(vertexDisplacement) * 50.0; 
+				vEle *= uAltitude;
 
-				vec4 modelViewPosition = modelViewMatrix * vec4( p, 1.0 );
+			 	vUv = 1.8*position + normal * vEle;
 
-				gl_Position = projectionMatrix * modelViewPosition;
+			 	// store the world position as varying for lighting
+    			vWorldPosition = position;
+    			vNormal = normal;
+
+			 	gl_Position = projectionMatrix * modelViewMatrix * vec4(vUv, 1.0);
+
 			}
 
 		</script>
 
 		<!-- Fragment Shader -->
 		<script type="x-shader/x-fragment" id="mountainFragment">
-
 			#ifdef GL_ES
 			precision highp float;
 			#endif
 
-			//Shader Variables Vertex 
-			uniform float delta;
-			varying float vOpacity;
+
+			uniform float uAltitude;
+			uniform float uOffset;
+			uniform float uSurfaceIntensity;
+			uniform vec3 uLightPosition;
+			
 			varying vec3 vUv;
+			varying float vEle;
+
+			varying vec3 vWorldPosition;
+			varying vec3 vNormal;
+
 
 			void main()
 			{
-				float r = 1.0 + cos( vUv.x * delta );
-				float g = 0.5 + sin( delta ) * 0.5;
-				float b = 0.0;
 
-				gl_FragColor = vec4( r, g, b, vOpacity );
+				vec3 lightDirection = normalize( uLightPosition - vWorldPosition );
+				//hardcoded lighting
+				float lightIntensity = 0.35 + max( 0.0, dot( vNormal, lightDirection )) * 0.4;
+
+
+				
+				vec3 colorBase = vec3(1.0);
+				vec3 colorSnow = vec3(1.0);
+
+
+				float r = lightIntensity+(1.0 + cos( vUv.x * 0.08 ));
+				float g = lightIntensity+(0.5 );
+				float b = lightIntensity;
+				gl_FragColor = vec4( r, g, b, 1.0 );
 			}
+		</script>
+
+
+
+
+
+
+
+
+
 
 		</script>
 
@@ -73,6 +232,11 @@
 		<script>
 			var camera, scene, renderer, stats;
 
+            var sunLight = new THREE.DirectionalLight( 'rgb(255,255,255)', 1.5 );
+            var useDirectionalLight = true;
+            var NormalVector = new THREE.Vector3( 0, 1, 0 );
+            var lightPosition4D = new THREE.Vector4();
+
 			//Camera attributes
 			const VIEW_ANGLE = 45;
 			const ASPECT = window.innerWidth / window.innerHeight;
@@ -82,11 +246,18 @@
 			//Get DOM element to attach to
 			const container = document.querySelector('#container');
 
+			var shaders = { mountainVertex: 'shaders/mountainVertex.js' }; 
+
+
 
 			init();
-			animate();
+			//animate();
+			render();
 
 			function init() {
+				
+				//------- SCENE SETUP --------
+
 				scene = new THREE.Scene();
 				
 				group = new THREE.Group();
@@ -94,6 +265,17 @@
 
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
 				camera.position.z = 1040;
+
+
+				light = new THREE.DirectionalLight( 0xffffff );
+                light.position.set( 0, 30, 40 );
+                light.castShadow = true;
+                light.intensity = 0.5;
+                group.add( light );
+
+                light_ambient = new THREE.AmbientLight( 0x222222 );
+                scene.add( light_ambient );
+
 
                 //-------- WORLD ------------
                 
@@ -109,7 +291,7 @@
 
 
                 // Ground Close
-				var groundGeometry = new THREE.PlaneGeometry( 450, 100, 5, 5 );
+				var groundGeometry = new THREE.PlaneGeometry( 450, 100, 200, 200 );
 				var groundMaterial = new THREE.MeshBasicMaterial( {color: 0x34495E, side: THREE.DoubleSide} );
 				var groundMesh = new THREE.Mesh( groundGeometry, groundMaterial );
 
@@ -119,22 +301,35 @@
 
 				//group.add( groundMesh );
 
+				// ************************************
 				// ********** Mountains *************** 
-				var mountainGeometry = new THREE.PlaneBufferGeometry(1300, 800, 30, 20);
+				// ************************************
+				var mountainGeometry = new THREE.PlaneBufferGeometry(1300, 1300, 500, 500);
+				mountainGeometry.castShadow = true;
+				mountainGeometry.receiveShadow = true; 
 
-
-				var uniforms = {
-					delta: { value: 0 }
-				};
 
 				var mountain_vShader = document.getElementById('mountainVertex').textContent;
 				var mountain_fShader = document.getElementById('mountainFragment').textContent;
 
+
+				uniforms_mountain = {
+					uAltitude: { type: "f", value: 200.0 },
+					uOffset: { type: "f", value: 0.0 },
+					uSurfaceIntensity: { type: "f", value: 0.001 },
+					uLightPosition: {type: 'v3', value: new THREE.Vector3(700, 700, 700)}
+				};
+
+
 				var mountainMaterial = new THREE.ShaderMaterial({
-					uniforms: uniforms, 
+					uniforms: uniforms_mountain, 
 					vertexShader: mountain_vShader,
-					fragmentShader: mountain_fShader
+					fragmentShader: mountain_fShader, 
+					//vertexShader: mountainVertex, 
+					//fragmentShader: mountainFragment
 				});
+
+
 
 				var mountainMesh = new THREE.Mesh( mountainGeometry, mountainMaterial );
 
@@ -150,13 +345,32 @@
 
 				mountainGeometry.addAttribute( 'vertexDisplacement', new THREE.BufferAttribute( vertexDisplacement, 1 ) );
 
-;					
+						
+				// ************************************
+				// ************** SKY ***************** 
+				// ************************************
+
+				/*
+				var skyMaterial = new THREE.ShaderMaterial({
+					uniforms: uniforms_sky, 
+					vertexShader: skyVertex,
+					fragmentShader: skyFragment,
+					side: THREE.backside
+				});
+				*/
+
+
+
+
 				
 				
 				// -------- RENDER SETTINGS -------- 
 				renderer = new THREE.WebGLRenderer();
                 renderer.setPixelRatio( window.devicePixelRatio );
                 renderer.setSize ( window.innerWidth, window.innerHeight );
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 				document.body.appendChild( renderer.domElement );
 				renderer.render(scene, camera);
 			}
@@ -180,12 +394,4 @@
 		</script>
 	</body>
 </html>
-				<!--var mountainMaterial = new THREE.MeshBasicMaterial( {color: 0x22313F, side: THREE.DoubleSide} );-->
-
-                <!--
-                earthMaterial = new THREE.MeshPhongMaterial({
-                    color: 0xfffabf,
-                    //map: THREE.ImageUtils.loadTexture('images/varmpink.png'),
-                    shading: THREE.SmoothShading,
-                    specular: 0
-                });-->
+<!--var mountainMaterial = new THREE.MeshBasicMaterial( {color: 0x22313F, side: THREE.DoubleSide} );-->
