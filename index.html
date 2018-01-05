@@ -156,27 +156,32 @@
 			void main()
 			{	
 				vec3 newPos = vec3( position.x*0.2, position.y*120.0, position.z );	
-				float noise1 = 0.0;
+				float noiseMountains = 0.0;
 				float e;
 				
-				float noise2 = 0.08 * snoise( vec3( 0.00000005*newPos.x, 0.00000005*newPos.y, 500.0 ) );
+				float noise1 = 0.08 * snoise( vec3( 0.00000005*newPos.x, 0.00000005*newPos.y, 500.0 ) );
 				
 				//Loop
 				for( float i = 1.0; i < 8.0; i += 1.0 ) { 	
 					e = exp( i );
-					noise1 += ( 1.0 / i * 1.5 ) * snoise( 0.0001 * position * noise2 * e );
+					noiseMountains += ( 1.0 / i * 1.5 ) * snoise( 0.0001 * position * noise1 * e );
 				}
-			
-				noise1 *= uAltitude * 3.0;
-				vHeight = noise1;
 
-				// store the world position as varying for lighting
+				//Noise for lake
+				float distCenter = sqrt( pow( position.x, 2.0 ) + pow( position.y, 2.0 ) );
+				float noiseLake = smoothstep( 600.0, 800.0, 1200.0 - distCenter );
+
+				noiseLake *= -350.0;
+				noiseMountains *= uAltitude * 4.0;
+				
+				float finalNoise = noiseMountains + noiseLake;
+
+				// store the world position 
     			vWorldPosition = position;
     			vNormal = normal;
+    			vHeight = finalNoise;
 
-
-			 	vUv = position + normal * noise1;
-			 	//vUv.y += (0.005 * vUv.z) + vUv.y;
+			 	vUv = position + normal * finalNoise;
 
 			 	gl_Position = projectionMatrix * modelViewMatrix * vec4(vUv, 1.0);
 			 	//gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -190,9 +195,7 @@
 			precision highp float;
 			#endif
 
-
-
-						// **************** SIMPLEX NOISE *********************
+			// **************** SIMPLEX NOISE *********************
 			//
 			// Description : Array and textureless GLSL 2D/3D/4D simplex noise functions.
 			//      Author : Ian McEwan, Ashima Arts.
@@ -297,8 +300,6 @@
 			}
 
 
-
-
 			uniform float uAltitude;
 			uniform float uOffset;
 			uniform float uSurfaceIntensity;
@@ -315,9 +316,9 @@
 			void main()
 			{
 				
-				//vec3 lightDirection = normalize( uLightPosition - vWorldPosition );
+				vec3 lightDirection = normalize( uLightPosition - vWorldPosition );
 				//hardcoded lighting
-				//float lightIntensity = 0.35 + max( 0.0, dot( vNormal, lightDirection )) * 0.4;
+				float lightIntensity = 0.35 + max( 0.0, dot( vNormal, lightDirection )) * 0.4;
 
 				float height = vWorldPosition.z;
 				//float maxHeight = 800.0;
@@ -348,7 +349,6 @@
 				//Set ranges between the layers
 				float dist = 10.0;
 				float seaLevel = 1.0;
-				//vec2 darkDist  = vec2( 0.0, 0.1 ) * dist;// * dist + seaLevel;
 				vec2 lightDist = vec2( 0.0, 0.2 ) * dist;// * dist + seaLevel;
 				vec2 stoneDist = vec2( 0.2, 0.8 ) * dist;// * dist + seaLevel;
 				vec2 snowDist  = vec2( 0.8, 3.0 ) * dist;// *dist + seaLevel;	
@@ -356,17 +356,6 @@
 				float dist2 = 10.0;
 
 				//Interpolation
-				/*
-				float snowGround  =  smoothstep( snowDist.x - dist2, snowDist.x, vHeight ) - 
-									 smoothstep( snowDist.y - dist2, snowDist.y, vHeight );
-
-				float lightGround =  smoothstep( lightDist.x, lightDist.y, vHeight );// - 
-							 	     //smoothstep( lightDist.y - dist, lightDist.y, vHeight );
-				
-				float stoneGround =  smoothstep( stoneDist.x - dist2, stoneDist.x, vHeight ) -
-							 	     smoothstep( stoneDist.y - dist2, stoneDist.y, vHeight );
-				*/
-
 				float noiseSnow = 10.0*snoise(0.05 * vWorldPosition);
 				//noiseSnow *= snoise(0.001 * vWorldPosition);
 				
@@ -374,27 +363,17 @@
 				float stoneGround = smoothstep( -140.0, -130.0, vHeight );
 				float snowGround  = smoothstep( 60.0, 69.0, vHeight + noiseSnow );
 				float depthGround = smoothstep( -100.0, 1000.0, vWorldPosition.y );
-				//float stoneGround2 = smoothstep( 60.0, 70.0, vHeight );
 				
-
 				//mix colors
 				vec3 clrDepth = mix( clrBlueClose, clrBlueFar, depthGround );
 				vec3 clrMix = clrGround; 
 				clrMix = mix( clrMix, clrGrass, grassGround );
 				clrMix = mix( clrMix, clrDepth, stoneGround );
 				clrMix = mix( clrMix, clrSnow, snowGround );
-				//clrMix = mix( clrMix, clrSnow, snowGround2 );
-
-				//vec3 colorFinal = mix( colorDark, colorLight, noise1 );
-				//colorFinal = mix( colorFinal, colorSnow, noise1 );
-				//colorFinal = mix( colorFinal, colorSnow, noise3 );
 
 
-				
-				//gl_FragColor = vec4( vec3(noiseTest), 1.0 );
+				//gl_FragColor = vec4( vec3(noiseLake), 1.0 );
 				gl_FragColor = vec4(clrMix, 1.0 );
-
-
 
 
 				/*
@@ -404,10 +383,6 @@
 				gl_FragColor = vec4( r, g, b, 1.0 );*/
 			}
 		</script>
-
-
-
-
 
 
 
@@ -517,9 +492,14 @@
 					uniforms: uniforms_mountain, 
 					vertexShader: mountain_vShader,
 					fragmentShader: mountain_fShader, 
+					flatShading: true
+					//wireframe: true
 					//vertexShader: mountainVertex, 
 					//fragmentShader: mountainFragment
 				});
+
+
+				//mountainMaterial.flatShading = true;
 
 
 
