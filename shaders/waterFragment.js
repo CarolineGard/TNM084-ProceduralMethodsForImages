@@ -185,7 +185,7 @@ var waterFragment = `
 		//float noise2 = snoise( vec3( 0.006 * vPosition.x, 0.02 * vPosition.y, 50.0 ) );
 
 		float noise1 = 0.0;
-		float noise2 = cnoise( vec4( 0.02 * vPosition.x, 0.07 * vPosition.y - uTime * 1.5, 10.0 , 0.5*uTime ) );
+		float noise2 = cnoise( vec4( 0.02 * vPosition.x, 0.07 * vPosition.y - uTime * 1.5, 10.0 , 0.8*uTime ) );
 
 		for( float i = 1.0; i < 2.0; i += 1.0 ) {
 			noise1 += ( 1.0 / i ) * cnoise( vec4( 0.007 * vPosition * noise2 , 1.0 ) );

@@ -383,7 +383,46 @@
 
 
 
+		<script type="x-shader/x-vertex" id="skyVertex">
 
+			uniform float uTime;
+
+			varying vec3 vPosition;
+
+			void main() {
+
+				vPosition = position;
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+
+		</script>
+
+		<script type="x-shader/x-fragment" id="skyFragment">
+
+
+			uniform float uTime;
+
+			varying vec3 vPosition;
+
+			void main() {
+
+				//9be4f8
+				vec3 clrBlueDark = vec3( 0.55, 0.82, 0.9 );
+				vec3 clrBlueLight = vec3( 0.9, 0.98, 0.99 );
+
+				float gradientBg  = smoothstep( -100.0, 1000.0, vPosition.y );
+				
+				//mix colors
+				vec3 clrMix = mix( clrBlueLight, clrBlueDark, gradientBg );
+
+
+				gl_FragColor = vec4( clrMix, 1.0);
+			}
+
+
+
+		</script>
 
 
 
@@ -597,17 +636,25 @@
 				// ************************************
 
 
-                var skyGeometry = new THREE.SphereGeometry(3000, 10, 10);
-                var skyMaterial = new THREE.MeshBasicMaterial( {
-                	color: 0x9be4f8, 
-                	side: THREE.DoubleSide,
-                	flatShading: true,
-                	castShadow: true
-                } );
+                var skyGeometry = new THREE.PlaneBufferGeometry(8000, 4000, 10, 10);
+
+                uniforms_sky = {
+					uTime: { type: "f", value: 0.0 }
+					//uLightPosition: {type: 'v3', value: new THREE.Vector3( 250, 1100, 700 )}
+				};
+
+				var sky_vShader = document.getElementById('skyVertex').textContent;
+				var sky_fShader = document.getElementById('skyFragment').textContent;
+
+                var skyMaterial = new THREE.ShaderMaterial({
+					uniforms: uniforms_sky,
+					vertexShader: sky_vShader,
+					fragmentShader: sky_fShader, 
+				});
 
 
                 skyMesh = new THREE.Mesh( skyGeometry, skyMaterial );
-                skyMesh.position.y = 250;
+                skyMesh.position.z = -3000;
                 group.add ( skyMesh );
 
 				/*
@@ -670,8 +717,8 @@
 				// Camera
 				camera.lookAt( scene.position );
 
-				//camera.rotation.y -= ( mouseX - camera.position.x ) * 0.0001;
-                //camera.rotation.x -=  ( mouseY - camera.position.y ) * 0.0001;
+				camera.rotation.y -= ( mouseX - camera.position.x ) * 0.00005;
+                camera.rotation.x -=  ( mouseY - camera.position.y ) * 0.00005;
 
                 // Water Animation 
 				uniforms_water.uTime.value = frame;
