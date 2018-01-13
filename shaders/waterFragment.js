@@ -174,30 +174,14 @@ var waterFragment = `
 
 	uniform float uTime;
 	uniform vec3 uLightPosition;
+	uniform vec3 uLightPositionSun;
+	uniform vec3 uLightPositionMoon;
 
 	varying vec3 vPosition;
 	varying vec3 vViewPosition;
 
 	//Fragment Water
 	void main() {
-
-		//float noise1 = 0.0;
-		//float noise2 = snoise( vec3( 0.006 * vPosition.x, 0.02 * vPosition.y, 50.0 ) );
-
-		float noise1 = 0.0;
-		float noise2 = cnoise( vec4( 0.02 * vPosition.x, 0.07 * vPosition.y - uTime * 1.5, 10.0 , 0.8*uTime ) );
-
-		for( float i = 1.0; i < 2.0; i += 1.0 ) {
-			noise1 += ( 1.0 / i ) * cnoise( vec4( 0.007 * vPosition * noise2 , 1.0 ) );
-		}	
-
-		vec3 clrBlue = vec3( 0.1, 0.75, 0.95 );
-		vec3 clrWater1 = vec3( 0.1, 0.61, 1.0 );
-		vec3 clrWater2 = vec3( 0.15, 0.45, 0.66 );
-
-		float intDist = smoothstep( 0.0, 1.0, 0.5 );
-
-		vec4 clrMix = vec4( mix( clrWater1, clrWater2, noise1 ), 0.5 );
 
 
 		//LIGHT
@@ -206,16 +190,66 @@ var waterFragment = `
 		//dFdx, dFdy returns the partial derivative 
 		//calculate normal using screen-space derivatives for flat shading, polygon style
 		vec3 newNormal = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );
+		//vec3 newNormal = normalize( cross( dFdx( vPosition ), dFdy( vPosition ) ) );
 
-		vec3 lightDirection = normalize( uLightPosition - vPosition );
+		vec3 lightDirection     = normalize( ( uLightPosition     - vPosition ) );
+		vec3 lightDirectionSun  = normalize( ( uLightPositionSun  - vPosition ) );
+		vec3 lightDirectionMoon = normalize( ( uLightPositionMoon - vPosition ) );
+		
 		//float lightIntensity = 0.35 + max( 0.0, dot( newNormal, lightDirection * 0.8 ));
-		float lightIntensity = 1.5 * dot( lightDirection, newNormal );
-		float lightAmbient = 0.9;
+		float lightIntensity     =  0.8 * dot( lightDirection, newNormal ) ;
+		float lightIntensitySun  =  1.5 * dot( lightDirectionSun, newNormal );
+		float lightIntensityMoon =  1.5 * dot( lightDirectionMoon, newNormal );
 
-		//clrMix *= lightIntensity * lightAmbient;
-		clrBlue *= lightIntensity * lightAmbient;
+		//Don't add light if sun or moon is down 
+		if (lightIntensitySun < 0.0 )
+			lightIntensitySun = 0.0;
 
-		//gl_FragColor = vec4( clrMix, 0.4 );
-		gl_FragColor = vec4( clrBlue, 1.0) * clrMix;
+		if (lightIntensityMoon < 0.0 )
+			lightIntensityMoon = 0.0;
+
+		lightIntensity *= lightIntensitySun * lightIntensityMoon;
+		lightIntensity += 0.8; 
+
+		float lightAmbient = 1.0;
+		//float test = 0.5 * uLightPositionSun.y;
+
+
+
+		/*
+		vec3 lightDirection2 = normalize( uLightPosition - vPosition );
+		float lightIntensity2 = 0.35 + max( 0.0, dot( newNormal2, lightDirection2 * 0.8 ));
+		//float lightIntensity2 = 1.5 * dot( lightDirection, newNormal );
+		float lightAmbient2 = 0.9;*/
+
+		float opacity = 0.7;
+		vec4 light = vec4( vec3( lightIntensity ), 1.0 );
+		//clrBlue *= light;
+
+		
+
+
+		// COLORS 
+
+		float noise1 = 0.0;
+		float noise2 = cnoise( vec4( 0.02 * vPosition.x, 0.07 * vPosition.y - uTime * 1.5, 10.0 , 0.8 * uTime ) );
+
+		for( float i = 1.0; i < 2.0; i += 1.0 ) {
+			noise1 += ( 1.0 / i ) * cnoise( vec4( 0.007 * vPosition * noise2 , 1.0 ) );
+		}	
+
+		float lightPos = 1.0;//abs(cos(0.8*uTime));
+		float lightOps = abs(sin(0.8*uTime)) + 0.3;
+
+		vec3 clrBlue   = lightPos * lightIntensity * vec3( 0.1, 0.75, 0.95 );
+		vec3 clrWater1 = lightPos * lightIntensity * vec3( 0.1, 0.61, 1.0 );
+		vec3 clrWater2 = lightPos * lightIntensity * vec3( 0.15, 0.45, 0.66 );
+
+		//float intDist = smoothstep( 0.0, 1.0, 0.5 );
+
+		vec4 clrMix = vec4( mix( clrWater1, clrWater2, noise1 ), opacity );
+		//float mixen = smoothstep( clrMix, light, 0.5 );
+
+		gl_FragColor = vec4( clrBlue, 1.0) * clrMix * lightPos;
 	}
 `;

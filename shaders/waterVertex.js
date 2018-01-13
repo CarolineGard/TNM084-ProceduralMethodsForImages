@@ -174,6 +174,8 @@ var waterVertex = `
 
 	uniform float uTime;
 	uniform vec3 uLightPosition;
+	uniform vec3 uLightPositionSun;
+	uniform vec3 uLightPositionMoon;
 
 	varying vec3 vPosition;
 	varying vec3 vViewPosition;
