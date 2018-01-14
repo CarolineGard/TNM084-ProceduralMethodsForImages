@@ -325,24 +325,20 @@
 			//Fragment Mountain
 			void main()
 			{
-				float height = vPosition.z;
-
 				float noise1 = snoise( vec3(vPosition.x * 0.07, vPosition.y * 0.07, 1.0));
 				float noise2 = snoise( vec3(vPosition.x * 0.005, vPosition.y * 0.005, 1.0));
 				float noise3 = snoise( vPosition );
 
 				vec3 clrSeaBottom = vec3( 0.1 );
-				vec3 clrGround = vec3( 0.11, 0.51, 0.3 );
-				vec3 clrBlueClose  = vec3( 0.01, 0.13, 0.19 ); //darker
-				vec3 clrBlueFar = vec3( 0.03, 0.31, 0.47 ); //lighter
-				vec3 clrGrass = vec3( 0.0, 0.6, 0.46 );
-				vec3 clrSnow  = vec3( 1.0 );//*snoise(vPosition);
-				vec3 clrSnow1  = vec3( 0.7 );//*snoise(vPosition);
-
+				vec3 clrGround    = vec3( 0.11, 0.51, 0.3 );
+				vec3 clrBlueClose = vec3( 0.01, 0.13, 0.19 ); //darker
+				vec3 clrBlueFar   = vec3( 0.03, 0.31, 0.47 ); //lighter
+				vec3 clrGrass     = vec3( 0.0, 0.6, 0.46 );
+				vec3 clrSnow      = vec3( 1.0 );//*snoise(vPosition);
+				vec3 clrSnow1     = vec3( 0.7 );//*snoise(vPosition);
 
 				//Interpolation
-				//float e = exp(vPosition.z);
-				float noiseSnow = 20.0*snoise( vec3( 50.0 * vPosition.x, 1.0*vPosition.y, vPosition.z ) );
+				float noiseSnow = 20.0*snoise( vec3( 50.0 * vPosition.x, 1.0 * vPosition.y, vPosition.z ) );
 				noiseSnow *= snoise(0.1 * vPosition);
 				
 				float bottomGround = smoothstep( -400.0, -220.0, vHeight );
@@ -669,10 +665,10 @@
 				vec2 pos2D = vec2( vPosition.x, vPosition.y );
 				
 				vec2 starNoise = 15.0 * cellular( 0.005 * pos2D );
-				starNoise += 0.6 * cnoise( 0.005*vec4( vPosition, 1.0 ) );
+				starNoise += 0.6 * cnoise( 0.005 * vec4( vPosition, 1.0 ) );
 
 				vec2 starNoise2 = 12.0 * cellular( 0.008 * pos2D );
-				starNoise2 += 0.5 * cnoise( 0.004*vec4( vPosition, 1.0 ) );
+				starNoise2 += 0.5 * cnoise( 0.004 * vec4( vPosition, 1.0 ) );
 				
 				
 				//Daytime 
@@ -690,7 +686,6 @@
 				vec3 clrStar = vec3( 1.0 );
 	
 
-
 				float noise = 0.0;
 				float size = 1.2;
 
@@ -700,34 +695,43 @@
 				float grad = smoothstep( 200.0, 900.0, vPosition.y );
 				float gradDay = smoothstep( 200.0, 1000.0, vPosition.y );
 				float gradSunset = smoothstep( 0.0, 1000.0, vPosition.y );
-				float simple = 1.0;
-				float simple2 = 0.0;
-				
-				//mix colors
-				//vec3 clrMixTop = mix( clrBlueDark, dark, grad * (-theTime) );
-				//vec3 clrMixBottom = mix( clrBlueDark, clrGreenLight, grad *theTime );
-				
-				//1. Mix the bottom colors, make depend on time
-				//2. Mix the top colors, make depend on time
-				//3. Mix tip and bottom color.  
+				float simple = 0.0;
 
-				//vec3 clrMix = mix( clrMixBottom, clrMixTop, grad );
-				float starNoiseFirst = clamp( ( 1.0 - starNoise.x), 0.0, 0.7 );
-				float starNoiseSecond = clamp( ( 1.0 - starNoise2.x), 0.0, 0.1 );
-
-				starNoiseFirst += starNoiseSecond;
-
+				// Sky day
 				vec3 clrMixDay = mix( clrBlueLight, clrBlueDark, gradDay );
+				// Sky Sunset and Sunrise
 				vec3 clrMixSunset = mix( clrYellow, clrGreenYellow, gradSunset );
-				
+				//Sky night
+				float starNoise1 = clamp( ( 1.0 - starNoise.x), 0.0, 0.7 ) + 
+								   clamp( ( 1.0 - starNoise2.x), 0.0, 0.1 );
+					
 				vec3 clrMixNight = mix( clrGreenLight, clrGreenDark, gradSunset );
 
-				vec3 clrMix1 = mix( clrMixNight, clrStar, starNoiseFirst );
-				vec3 clrMix2 = mix( clrMix1, clrStar, simple2 );
+				vec3 clrMix1 = mix( clrMixNight, clrStar, starNoise1 );
+				vec3 clrMixNightFinal = mix( clrMix1, clrStar, simple );
 
 
-				gl_FragColor = vec4( clrMix2, 1.0);// * starNoise;
+				// INTERPOLATION DEPENDING ON TIME OF THE DAY
+				float timeCos = cos( 0.045 * uTime );
+				float timeSin = sin( 0.045 * uTime );
 
+				vec3 clrFinal = vec3( 0.0 );
+				
+				if( timeCos > 0.0 && timeSin > 0.0  ) //Day to sunset
+					clrFinal = mix( clrMixSunset, clrMixDay, abs( timeCos ) );
+				
+				
+				if( timeCos < 0.0 && timeSin > 0.0  ) //Sunset to night
+					clrFinal = mix( clrMixSunset, clrMixNightFinal, abs( timeCos ) );
+				
+				
+				if( timeCos < 0.0 && timeSin < 0.0  ) //Night to sunset
+					clrFinal = mix( clrMixSunset, clrMixNightFinal, abs( timeCos ) );
+
+				if( timeCos > 0.0 && timeSin < 0.0  ) //Sunset to day
+					clrFinal = mix( clrMixSunset, clrMixDay, abs( timeCos ) );
+
+				gl_FragColor = vec4( clrFinal, 1.0);
 
 				//NightTime 
 				//Random placement Pattern
