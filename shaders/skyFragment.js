@@ -288,7 +288,6 @@ var skyFragment = `
 						   clamp( ( 1.0 - starNoise2.x), 0.0, 0.1 );
 			
 		vec3 clrMixNight = mix( clrGreenLight, clrGreenDark, gradSunset );
-
 		vec3 clrMix1 = mix( clrMixNight, clrStar, starNoise1 );
 		vec3 clrMixNightFinal = mix( clrMix1, clrStar, simple );
 
